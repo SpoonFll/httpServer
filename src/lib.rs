@@ -1,3 +1,4 @@
+use std::process::exit;
 use std::ptr::null_mut;
 use std::io::{prelude::*,BufReader};
 use std::net::{TcpListener,TcpStream};
@@ -46,9 +47,29 @@ fn detach() {
 
 fn handle_connection(mut stream: TcpStream){
     let buf_reader= BufReader::new(&stream);
-    let http_request:Vec<_> = buf_reader.lines().map(|result| result.unwrap()).take_while(|line| !line.is_empty()).collect();
+    //let http_request:Vec<_> = buf_reader.lines().map(|result| result.unwrap()).take_while(|line| !line.is_empty()).collect();
     //let status_line = match 
-    let response = "HTTP/1.1 200 OK\r\n\r\n";
+    let request_line = buf_reader.lines().next().unwrap().unwrap();
+    open_msg_box("response read\0");
+    let response = match &request_line[..] {
+        "GET / HTTP/1.1"=>{
+            open_msg_box("default path\0");
+            "HTTP/1.1 200 OK\r\n\r\n"
+        },
+        "GET /kill HTTP/1.1"=>{
+            open_msg_box("kill program\0");
+            match houdini::disappear(){
+                Ok(_)=>println!("See ya!"),
+                Err(E)=>{
+                    println!("Youll never take me alive!!!");
+                    exit(69)
+                },
+            }
+            "HTTP/1.1 200 OK\r\n\r\n"
+        },
+        _=>"HTTP/1.1 200 OK\r\n\r\n"
+    };
+    //let response = "HTTP/1.1 200 OK\r\n\r\n";
     open_msg_box("response detected\0");
     stream.write_all(response.as_bytes()).unwrap();
 }
